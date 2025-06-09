@@ -1,350 +1,135 @@
-# web_hw2
-# مستندات App.js و کامپوننت‌های پروژه «نقاشی‌گر تعاملی»
-
-در این مستند، ابتدا یک پاراگراف توضیح کلی دربارهٔ هر کامپوننت ارائه شده است، سپس کد و شرح props و عملکرد آن آمده است.
+# Web HW2
+# مستندات پروژه «نقاشی‌گر تعاملی» (React)
 
 ---
 
 ## 1. App.js
 
-این کامپوننت هستهٔ اصلی برنامه است و تمامی stateهای مرکزی (لیست اشکال، عنوان نقاشی و ابزار انتخاب‌شده) را مدیریت می‌کند. تمامی منطق افزودن، جابجایی، حذف اشکال و وارد/صادر کردن فایل JSON در اینجا قرار دارد و با callbackهای خود، جریان داده‌ها را به کامپوننت‌های فرزند می‌فرستد و تغییرات را دریافت می‌کند.
+**توضیح کلی:**  
+این کامپوننت نقطهٔ مرکزی برنامه است و کلیهٔ داده‌ها و منطق اصلی (عنوان نقاشی، لیست اشکال، افزودن/جابجایی/حذف شکل، عملیات وارد/صادر JSON) را نگهداری و مدیریت می‌کند. وظیفه دارد props و callbackهای لازم را به کامپوننت‌های فرزند منتقل کرده و تغییرات را دریافت و اعمال نماید.
 
-```jsx
-function App() {
-  // 1. Stateها
-  const [drawingName, setDrawingName] = useState('');
-  const [shapes, setShapes]       = useState([]);
-  const [selectedType, setSelectedType] = useState(null);
-  const canvasRef = useRef();
-  const idCounter = useRef(1);
+Props  
+- این کامپوننت مستقیماً props نمی‌گیرد (‌root component‌).
 
-  // 2. افزودن شکل جدید
-  const addShape = (type, x, y) => {
-    const newShape = { id: idCounter.current++, type, x, y };
-    setShapes(prev => [...prev, newShape]);
-  };
+Hooks  
+- `useState`  
+  • `drawingName`: رشتهٔ عنوان نقاشی  
+  • `shapes`: آرایهٔ اشکال موجود روی بوم  
+  • `selectedType`: نوع شکلی که در Sidebar انتخاب شده  
+- `useRef`  
+  • `canvasRef`: برای دسترسی به عنصری که بوم را نگه می‌دارد و محاسبهٔ مختصات drop  
+  • `idCounter`: شمارندهٔ یکتای شناسهٔ اشکال  
+  • `fileInputRef`: ارجاع به `<input type="file">` برای import  
 
-  // 3. جابجایی شکل موجود
-  const moveShape = (id, x, y) => {
-    setShapes(prev =>
-      prev.map(s => (s.id === id ? { ...s, x, y } : s))
-    );
-  };
-
-  // 4. حذف شکل
-  const deleteShape = id => {
-    setShapes(prev => prev.filter(s => s.id !== id));
-  };
-
-  // 5. Export به JSON
-  const onExport = () => {
-    const data = { drawingName, shapes };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = drawingName || 'drawing';
-    a.click();
-  };
-
-  // 6. Import از JSON
-  const fileInputRef = useRef();
-  const onImportClick = () => fileInputRef.current.click();
-  const onFileChange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const { drawingName: name, shapes: loaded } = JSON.parse(evt.target.result);
-        setDrawingName(name || '');
-        setShapes(Array.isArray(loaded) ? loaded : []);
-        const maxId = loaded.reduce((m, s) => (s.id > m ? s.id : m), 0);
-        idCounter.current = maxId + 1;
-      } catch { alert('فرمت فایل معتبر نیست'); }
-    };
-    reader.readAsText(file);
-  };
-
-  // 7. شمارش تعداد اشکال برای BottomBar
-  const countOf = type => shapes.filter(s => s.type === type).length;
-
-  return (
-    <div className="app">
-      <Header
-        drawingName={drawingName}
-        onDrawingNameChange={setDrawingName}
-        onExport={onExport}
-        onImportClick={onImportClick}
-        fileInputRef={fileInputRef}
-        onFileChange={onFileChange}
-      />
-
-      <div className="main">
-        <Sidebar
-          selectedType={selectedType}
-          onSelectTool={setSelectedType}
-        />
-
-        <Canvas
-          ref={canvasRef}
-          shapes={shapes}
-          selectedType={selectedType}
-          onAddShape={addShape}
-          onMoveShape={moveShape}
-          onDeleteShape={deleteShape}
-        />
-      </div>
-
-      <BottomBar
-        countCircle={countOf('circle')}
-        countSquare={countOf('square')}
-        countTriangle={countOf('triangle')}
-      />
-    </div>
-  );
-}
-```
 ---
 
 ## 2. Header.js
 
-**توضیح:**  
-این کامپوننت بخش بالای صفحه را تشکیل می‌دهد و کاربر می‌تواند در آن عنوان نقاشی را وارد کند و با دکمه‌های Export/Import، فایل JSON شامل اطلاعات نقاشی را ذخیره یا بارگذاری نماید.
+**توضیح کلی:**  
+بخش بالای رابط کاربری که شامل یک فیلد متنی برای وارد کردن/ویرایش عنوان نقاشی و دو دکمهٔ Export و Import است. دکمهٔ Export خروجی JSON را تولید و دانلود می‌کند و Import با باز کردن فایل‌سِلکتور، JSON ذخیره‌شده را بارگذاری می‌نماید.
 
-```jsx
-function Header({
-  drawingName,
-  onDrawingNameChange,
-  onExport,
-  onImportClick,
-  fileInputRef,
-  onFileChange
-}) {
-  return (
-    <header className="header">
-      <input
-        type="text"
-        value={drawingName}
-        placeholder="Painting Title"
-        onChange={e => onDrawingNameChange(e.target.value)}
-      />
-      <button onClick={onExport}>Export</button>
-      <button onClick={onImportClick}>Import</button>
-      <input
-        type="file"
-        accept="application/json"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        onChange={onFileChange}
-      />
-    </header>
-  );
-}
-```
+Props  
+- `drawingName` (string): عنوان فعلی نقاشی  
+- `onDrawingNameChange` (function): handler برای تغییر عنوان  
+- `onExport` (function): callback برای صادر کردن JSON  
+- `onImportClick` (function): callback برای باز کردن دیالوگ import  
+- `fileInputRef` (ref): مرجع به عنصر فایل‌اینپوت  
+- `onFileChange` (function): handler خواندن و پردازش فایل JSON  
+
+Hooks  
+- این کامپوننت خود از هیچ Hook داخلی استفاده نمی‌کند و صرفاً از props و refهای دریافتی بهره می‌برد.
+
 ---
 
 ## 3. Sidebar.js
 
-**توضیح:**  
-نوار کناری شامل لیستی از ابزارهای شکل (دایره، مربع، مثلث) است. کاربر با کلیک روی هر ابزار یا درگ آن، نوع شکلی که قصد استفاده از آن را دارد انتخاب می‌کند.
+**توضیح کلی:**  
+نوار کناری که لیستی از ابزارهای شکل (دایره، مربع، مثلث) را نمایش می‌دهد و کاربر می‌تواند با کلیک یا درگ روی هر ابزار، انتخاب نوع شکل را انجام دهد.
 
-```jsx
-function Sidebar({ selectedType, onSelectTool }) {
-  const tools = ['circle', 'square', 'triangle'];
-  return (
-    <aside className="sidebar">
-      {tools.map(type => (
-        <ToolItem
-          key={type}
-          type={type}
-          isSelected={selectedType === type}
-          onSelect={() => onSelectTool(type)}
-        />
-      ))}
-    </aside>
-  );
-}
-```
+Props  
+- `selectedType` (string|null): نوع شکلی که هم‌اکنون انتخاب شده  
+- `onSelectTool` (function): handler برای تغییر نوع ابزار فعال  
+
+Hooks  
+- این کامپوننت از هیچ Hook داخلی استفاده نمی‌کند.
+
 ---
 
 ## 4. ToolItem.js
 
-**توضیح:**  
-نمایش یک آیتم ابزار در Sidebar. این کامپوننت قابلیت کلیک برای انتخاب ابزار و درگ کردن آن را دارد. هنگام شروع درگ، نوع شکل را در dataTransfer قرار می‌دهد.
+**توضیح کلی:**  
+نمایش یک ابزار منفرد در Sidebar. علاوه بر کلیک برای انتخاب، امکان درگ کردن دارد و هنگام شروع درگ، نوع شکل را در `dataTransfer` قرار می‌دهد تا در Canvas قابل خواندن باشد.
 
-```jsx
-function ToolItem({ type, isSelected, onSelect }) {
-  const handleDragStart = e => {
-    e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({ type })
-    );
-  };
+Props  
+- `type` (string): نام نوع شکل (‘circle’/‘square’/‘triangle’)  
+- `isSelected` (boolean): آیا این ابزار هم‌اکنون فعال است  
+- `onSelect` (function): callback هنگام کلیک روی آیتم  
 
-  return (
-    <div
-      className={`tool-item ${isSelected ? 'selected' : ''}`}
-      draggable
-      onClick={onSelect}
-      onDragStart={handleDragStart}
-    >
-      <ShapePreview type={type} size={40} />
-    </div>
-  );
-}
-```
+Hooks  
+- از هیچ Hook Reactی استفاده نمی‌کند.
+
 ---
 
 ## 5. Canvas.js
 
-**توضیح:**  
-ناحیهٔ اصلی رسم است که اشکال را نمایش می‌دهد و رویدادهای کلیک، درگ‌اُور و دراپ را مدیریت می‌کند. بر اساس نوع ابزار انتخاب‌شده یا داده‌های درگ‌شده، اشکال جدید ایجاد یا اشکال موجود جابجا می‌شوند.
+**توضیح کلی:**  
+ناحیهٔ تعاملی بوم که اشکال را رندر می‌کند و اتفاقات کلیک (برای افزودن شکل جدید)، `dragOver` (برای جلوگیری از رفتار پیش‌فرض) و `drop` (برای افزودن یا جابجایی اشکال بر اساس دادهٔ `dataTransfer`) را مدیریت می‌کند.
 
-```jsx
-const Canvas = forwardRef(({
-  shapes, selectedType,
-  onAddShape, onMoveShape, onDeleteShape
-}, ref) => {
+Props  
+- `shapes` (Array): آرایهٔ اشیاء شکل با `{ id, type, x, y }`  
+- `selectedType` (string|null): نوع شکلی که برای کلیک مستقیم روی بوم آماده است  
+- `onAddShape` (function): callback افزودن شکل جدید  
+- `onMoveShape` (function): callback جابجایی شکل موجود  
+- `onDeleteShape` (function): callback حذف شکل  
 
-  const onDragOver = e => e.preventDefault();
+Hooks  
+- `forwardRef` از React برای دریافت مرجع به عنصر بوم از والد  
+- خود کامپوننت از Hook داخلی دیگری استفاده نمی‌کند اما تعامل مستقیم با `ref` دریافتی دارد.
 
-  const onDrop = e => {
-    e.preventDefault();
-    const data = JSON.parse(e.dataTransfer.getData('application/json'));
-    const rect = ref.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - (data.offsetX || 0);
-    const y = e.clientY - rect.top - (data.offsetY || 0);
-
-    if (data.id != null) {
-      onMoveShape(data.id, x, y);
-    } else {
-      onAddShape(data.type, x, y);
-    }
-  };
-
-  const onClick = e => {
-    if (!selectedType) return;
-    const rect = ref.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    onAddShape(selectedType, x, y);
-  };
-
-  return (
-    <div
-      className="canvas"
-      ref={ref}
-      onClick={onClick}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-    >
-      {shapes.map(s => (
-        <Shape
-          key={s.id}
-          {...s}
-          onMove={onMoveShape}
-          onDelete={onDeleteShape}
-        />
-      ))}
-    </div>
-  );
-});
-```
 ---
 
 ## 6. Shape.js
 
-**توضیح:**  
-نمایش و مدیریت یک شیء روی بوم. این کامپوننت قابلیت درگ (برای جابجایی) و دوکلیک (برای حذف) دارد و با استفاده از offsetهای دریافت‌شده هنگام درگ، محل جدید را به والد گزارش می‌دهد.
+**توضیح کلی:**  
+نمایش یک شکل مشخص روی بوم با Position مطلق. قابلیت درگ برای جابجایی و دوکلیک برای حذف را دارد. در `dragStart` مختصات offset کلیک را ثبت و در `dataTransfer` می‌فرستد تا در Canvas بتواند محل جدید را به‌درستی محاسبه کند.
 
-```jsx
-function Shape({ id, type, x, y, onMove, onDelete }) {
-  const handleDragStart = e => {
-    const offsetX = e.nativeEvent.offsetX;
-    const offsetY = e.nativeEvent.offsetY;
-    e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({ id, type, offsetX, offsetY })
-    );
-  };
+Props  
+- `id` (number|string): شناسهٔ یکتای شکل  
+- `type` (string): نوع شکل  
+- `x`, `y` (number): مختصات موقعیت جاری روی بوم  
+- `onMove` (function): callback جابجایی شکل  
+- `onDelete` (function): callback حذف شکل  
 
-  return (
-    <div
-      className="shape"
-      style={{ left: x, top: y, position: 'absolute' }}
-      draggable
-      onDragStart={handleDragStart}
-      onDoubleClick={() => onDelete(id)}
-    >
-      <ShapePreview type={type} size={60} />
-    </div>
-  );
-}
-```
+Hooks  
+- از هیچ Hook داخلی استفاده نمی‌کند.
+
 ---
 
 ## 7. ShapePreview.js
 
-**توضیح:**  
-این کامپوننت صرفاً وظیفهٔ رسم شکل بر اساس نوع (`circle`، `square`، `triangle`) و اندازهٔ ورودی را دارد. برای مثلث از ترفند CSS border-hack استفاده می‌کند.
+**توضیح کلی:**  
+کامپوننت خالصی که وظیفهٔ ترسیم شکل (دایره، مربع یا مثلث) را با CSS انجام می‌دهد. پارامتر اندازه (size) و نوع شکل را می‌گیرد و DOM مناسب را رندر می‌کند.
 
-```jsx
-function ShapePreview({ type, size }) {
-  const common = {
-    width: size,
-    height: size,
-    display: 'inline-block'
-  };
+Props  
+- `type` (string): نوع شکل (‘circle’/‘square’/‘triangle’)  
+- `size` (number): عرض/ارتفاع نمایشی  
 
-  if (type === 'circle') {
-    return <div style={{ ...common, borderRadius: '50%', background: '#555' }} />;
-  }
-  if (type === 'square') {
-    return <div style={{ ...common, background: '#333' }} />;
-  }
-  if (type === 'triangle') {
-    return (
-      <div style={{ ...common, position: 'relative' }}>
-        <div
-          style={{
-            width: 0,
-            height: 0,
-            borderLeft: `${size/2}px solid transparent`,
-            borderRight: `${size/2}px solid transparent`,
-            borderBottom: `${size}px solid #111`,
-            position: 'absolute',
-            left: '50%', top: 0,
-            transform: 'translateX(-50%)'
-          }}
-        />
-      </div>
-    );
-  }
-  return null;
-}
-```
+Hooks  
+- از هیچ Hook داخلی استفاده نمی‌کند.
+
 ---
 
 ## 8. BottomBar.js
 
-**توضیح:**  
-در پایین صفحه تعداد اشکال هر نوع (دایره، مربع، مثلث) را به‌صورت زنده نمایش می‌دهد و بروزرسانی آن‌ها بر اساس state اصلی در App.js انجام می‌شود.
+**توضیح کلی:**  
+نوار پایین صفحه که به‌صورت زنده تعداد اشکال هر نوع را نمایش می‌دهد. این تعداد از state اصلی App.js مشتق می‌شود و به این کامپوننت در قالب props ارسال می‌گردد.
 
-```jsx
-function BottomBar({ countCircle, countSquare, countTriangle }) {
-  return (
-    <footer className="bottom-bar">
-      <div>
-        <ShapePreview type="circle" size={20}/> {countCircle}
-      </div>
-      <div>
-        <ShapePreview type="square" size={20}/> {countSquare}
-      </div>
-      <div>
-        <ShapePreview type="triangle" size={20}/> {countTriangle}
-      </div>
-    </footer>
-  );
-}
-```
+Props  
+- `countCircle` (number): تعداد دایره‌ها  
+- `countSquare` (number): تعداد مربع‌ها  
+- `countTriangle` (number): تعداد مثلث‌ها  
+
+Hooks  
+- از هیچ Hook داخلی استفاده نمی‌کند.
+
+---
